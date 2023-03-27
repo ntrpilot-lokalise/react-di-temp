@@ -1,0 +1,73 @@
+import { createContext } from "react";
+
+class Resolver<F extends (...args: any[]) => any> {
+
+    constructor(
+        readonly factory: () => Promise<F>,
+    ) {
+        this.promise = factory().then(
+            result => {
+                this.result = result;
+                this.isResolved = true;
+            },
+            err => {
+                this.isError = true;
+                this.error = err;
+            }
+        )
+    }
+
+    readonly promise;
+
+    isResolved = false;
+    result: F | undefined = undefined;
+
+    isError = false;
+    error: unknown | undefined = undefined;
+}
+
+const resolverCache = new Map<() => Promise<Function>, Resolver<() => any>>()
+
+export const useDi = <F extends (...args: any[]) => any>(fnFactory: () => Promise<F>) => {
+    let resolver = resolverCache.get(fnFactory);
+
+    if (resolver === undefined) {
+        resolver = new Resolver(fnFactory);
+        resolverCache.set(fnFactory, resolver);
+    }
+
+    if (resolver.isResolved) {
+        return resolver.result!;
+    }
+
+    if (resolver.isError) {
+        throw resolver.error;
+    }
+
+    throw resolver.promise;
+}
+
+export type DiFunction = (...args: any[]) => any;
+
+interface LazyDiFuntion<Fn extends DiFunction> {
+    (): Promise<Fn>;
+    isLazyDiFunction: true;
+}
+
+export const lazyImplementation = <Fn extends DiFunction>(factory: () => Promise<Fn>): LazyDiFuntion<Fn> => {
+    (factory as LazyDiFuntion<Fn>).isLazyDiFunction = true;
+    return factory as LazyDiFuntion<Fn>;
+}
+
+const isLazyDiFunction = <Fn extends DiFunction>(factory: Fn | LazyDiFuntion<Fn> ): factory is LazyDiFuntion<Fn> => 
+    (factory as LazyDiFuntion<Fn>).isLazyDiFunction;
+
+type DiContext = {
+    container: Record<string, DiFunction | (() => Promise<DiFunction>)>;
+}
+
+const DiContext = createContext<DiContext>({ container: {} });
+
+export const DiContainer = <Container extends { [k: string]: DiFunction | (() => Promise<DiFunction>)}>() => {
+
+}

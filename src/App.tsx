@@ -1,25 +1,19 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { Suspense, useState } from 'react';
+import { SomeModuleDefinition, SomeTopLevelComponent } from './SomeModule/SomeModule';
+import { lazyImplementation, OverrideModuleImplmentation } from './useDi2';
+
+const useProvidedHook = lazyImplementation(() => import('./useLazyHookImpl'))
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+    <Suspense fallback={<span>Loading...</span>}>
+      <OverrideModuleImplmentation<SomeModuleDefinition>
+        someRequiredFunction={() => 123}
+        useProvidedHook={useProvidedHook}
         >
-          Learn React
-        </a>
-      </header>
-    </div>
+          <SomeTopLevelComponent />
+      </OverrideModuleImplmentation>      
+    </Suspense>
   );
 }
 
